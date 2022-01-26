@@ -1,12 +1,16 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
-var http = require("http");
+var http = require("http")
 
 http.createServer(function (req, res) {
   console.log('http server?')
+
+  printWindow({title: 'Invoice Info from server'})
+  console.log('print success.');
+
   res.writeHead(200, 'Ok', { 'Content-Type': 'text/html' })
-  res.end('Hello, world')
+  res.end('print success.')
 }).listen(8889)
 
 function createWindow () {
@@ -15,9 +19,7 @@ function createWindow () {
     width: 1024,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
-      contextIsolation: false
+      preload: path.join(__dirname, 'preload.js')
     }
   })
 
@@ -27,10 +29,39 @@ function createWindow () {
   // Open the DevTools.
   mainWindow.webContents.openDevTools()
 
-  //const contents = mainWindow.webContents
+  mainWindow.on('closed', function(){
+    app.quit()
+  })
 
-  //const printers = contents.getPrinters()
-  //console.log('printer=>', printers)
+  /*
+  const contents = mainWindow.webContents
+  const printers = contents.getPrinters()
+  console.log('printer=>', printers)
+  */
+}
+
+function printWindow(data) {
+  const win = new BrowserWindow({
+    show: false
+  })
+  win.loadFile('print.html')
+
+  win.on('close', function() {
+    console.log('close sub window')
+  })
+
+  win.webContents.once('dom-ready', function() {
+    console.log('dom ready, start printing...', data.title);
+    
+    const options = {
+      silent: true,
+      deviceName: 'HP LaserJet MFP M28-M31 PCLm-S',
+    }
+    win.webContents.print(options, (success, errorType) => {
+      if (!success) console.log('error =>', errorType)
+    })
+    
+  });
 }
 
 // This method will be called when Electron has finished
@@ -56,8 +87,9 @@ app.on('window-all-closed', function () {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
-ipcMain.on('load:web', function(e, data) {
-  console.log('data=>', data);
+ipcMain.on('print', function(e, data) {
+  console.log('data=>', data)
+  printWindow(data);
 });
 
 
